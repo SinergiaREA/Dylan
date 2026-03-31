@@ -428,28 +428,61 @@ startAutoConfetti();
 
 /* ---- MÚSICA DE FONDO ---- */
 (function () {
-  var started = false;
   var audio = new Audio("mp3/PISCES.mp3");
   audio.loop   = true;
-  audio.volume = 0.4;
+  audio.volume = 0.5;
+  var playing  = false;
 
-  // Intento inmediato al cargar (funciona si el navegador lo permite)
-  audio.play().then(function () {
-    started = true;
-  }).catch(function () {
-    // Bloqueado por el navegador — arranca al primer scroll o toque
-    function unlock() {
-      if (started) return;
-      started = true;
-      audio.play();
-      document.removeEventListener("scroll",     unlock);
-      document.removeEventListener("click",      unlock);
-      document.removeEventListener("touchstart", unlock);
-      document.removeEventListener("keydown",    unlock);
+  /* Botón flotante */
+  var btn = document.createElement("button");
+  btn.setAttribute("aria-label", "Música");
+  btn.style.cssText =
+    "position:fixed;bottom:22px;right:22px;z-index:9999;" +
+    "width:46px;height:46px;border-radius:50%;border:none;" +
+    "background:rgba(255,255,255,0.88);backdrop-filter:blur(8px);" +
+    "-webkit-backdrop-filter:blur(8px);" +
+    "box-shadow:0 2px 14px rgba(0,0,0,0.18);font-size:22px;" +
+    "cursor:pointer;display:flex;align-items:center;justify-content:center;" +
+    "transition:opacity .4s,transform .15s;padding:0;";
+  btn.textContent = "🎵";
+  document.body.appendChild(btn);
+
+  function setPlaying(state) {
+    playing = state;
+    btn.textContent = playing ? "🔇" : "🎵";
+    btn.title       = playing ? "Silenciar" : "Reproducir música";
+  }
+
+  /* Click en el botón: toggle play/pause */
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      audio.play().then(function () { setPlaying(true); });
     }
+  });
+
+  /* Intento automático al cargar */
+  audio.play().then(function () {
+    setPlaying(true);
+  }).catch(function () {
+    /* Bloqueado — esperamos scroll o toque para activar */
+    setPlaying(false);
+
+    function unlock() {
+      if (playing) return;
+      audio.play().then(function () {
+        setPlaying(true);
+        document.removeEventListener("scroll",     unlock);
+        document.removeEventListener("touchstart", unlock);
+        document.removeEventListener("touchend",   unlock);
+      }).catch(function () { /* Brave muy estricto — solo el botón */ });
+    }
+
     document.addEventListener("scroll",     unlock, { passive: true });
-    document.addEventListener("click",      unlock);
     document.addEventListener("touchstart", unlock, { passive: true });
-    document.addEventListener("keydown",    unlock);
+    document.addEventListener("touchend",   unlock, { passive: true });
   });
 })();
